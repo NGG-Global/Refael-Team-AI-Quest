@@ -32,7 +32,13 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      # enablement: true lets the workflow turn Pages on itself (build type
+      # "workflow"); without it the action only reads an existing Pages site
+      # and fails with "Get Pages site failed" on a repository where Pages has
+      # never been configured.
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: '.'
