@@ -1,9 +1,11 @@
 /**
- * Application shell: state, steps, persistence and export.
+ * Version A — מיפוי מוכנות להטמעת AI.
+ *
+ * Step machine and views. Chrome, storage and shared controls come from
+ * shell.js; the distillation rules live in engine.js.
  *
  * Everything runs in the browser. The page makes no network request of any
- * kind — fonts, styles and logic are served from the same origin — and the
- * answers are never transmitted anywhere.
+ * kind, and the answers are never transmitted anywhere.
  */
 
 import {
@@ -13,9 +15,10 @@ import {
 import { distill, toPlainText } from './engine.js';
 import { distribution, dimensionDetail, ratingsTable, scaleKey } from './charts.js';
 import { el, fill } from './dom.js';
-
-const STORE_KEY = 'rafael-ai-readiness/v1';
-const THEME_KEY = 'rafael-ai-readiness/theme';
+import {
+  createStore, initTheme, bindTheme, paintProgress, cometField,
+  textField, stepNav, toast, copyText, downloadText
+} from './shell.js';
 
 const STEPS = ['intro', 'team', 'manager', 'work', 'process', 'report'];
 const INPUT_STEPS = ['team', 'manager', 'work', 'process'];
@@ -28,26 +31,11 @@ const STEP_NAMES = {
   report: 'תמונת מצב'
 };
 
-/* --------------------------------------------------------------- state -- */
+const store = createStore('rafael-ai-readiness/v1', { ratings: {}, open: {}, environment: null });
+const state = store.state;
 
-const state = { ratings: {}, open: {}, environment: null };
 let stepIndex = 0;
 let goingBack = false;
-
-function load() {
-  try {
-    const raw = localStorage.getItem(STORE_KEY);
-    if (!raw) return;
-    const saved = JSON.parse(raw);
-    Object.assign(state.ratings, saved.ratings || {});
-    Object.assign(state.open, saved.open || {});
-    state.environment = saved.environment || null;
-  } catch { /* a blocked or full store must not stop the tool */ }
-}
-
-function save() {
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch { /* ignore */ }
-}
 
 const unratedIn = (dimension) => dimension.items.filter((item) => !state.ratings[item.id]).length;
 const hasAnyAnswer = () =>
@@ -55,71 +43,7 @@ const hasAnyAnswer = () =>
   Object.values(state.open).some((text) => String(text || '').trim()) ||
   Boolean(state.environment);
 
-/* --------------------------------------------------------------- theme -- */
-
-function initTheme() {
-  try {
-    const saved = localStorage.getItem(THEME_KEY);
-    if (saved) document.documentElement.dataset.theme = saved;
-  } catch { /* ignore */ }
-}
-
-function toggleTheme() {
-  const root = document.documentElement;
-  const dark = root.dataset.theme
-    ? root.dataset.theme === 'dark'
-    : window.matchMedia('(prefers-color-scheme: dark)').matches;
-  root.dataset.theme = dark ? 'light' : 'dark';
-  try { localStorage.setItem(THEME_KEY, root.dataset.theme); } catch { /* ignore */ }
-  paintChrome();
-}
-
-/* ---------------------------------------------------------------- toast -- */
-
-let toastTimer;
-function toast(message) {
-  const node = document.getElementById('toast');
-  node.textContent = message;
-  node.classList.add('is-on');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => node.classList.remove('is-on'), 2600);
-}
-
-/* --------------------------------------------------------------- chrome -- */
-
-function isDark() {
-  const set = document.documentElement.dataset.theme;
-  return set ? set === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
-}
-
-function paintChrome() {
-  const rafael = document.querySelectorAll('[data-logo="rafael"]');
-  const src = isDark() ? 'assets/img/logo-rafael-white.png' : 'assets/img/logo-rafael-blue.png';
-  rafael.forEach((img) => { img.src = src; });
-
-  const bars = document.getElementById('progress-bars');
-  const label = document.getElementById('progress-label');
-  const current = STEPS[stepIndex];
-
-  if (current === 'intro') {
-    bars.parentElement.hidden = true;
-    return;
-  }
-  bars.parentElement.hidden = false;
-
-  const position = INPUT_STEPS.indexOf(current);
-  fill(bars, INPUT_STEPS.map((_, index) => el('span', {
-    class: `progress__bar${index < position ? ' is-done' : index === position ? ' is-now' : ''}`
-  })));
-
-  label.textContent = current === 'report'
-    ? STEP_NAMES.report
-    : `${position + 1}/${INPUT_STEPS.length} · ${STEP_NAMES[current]}`;
-
-  if (current === 'report') {
-    fill(bars, INPUT_STEPS.map(() => el('span', { class: 'progress__bar is-done' })));
-  }
-}
+const onText = (id, value) => { state.open[id] = value; store.save(); };
 
 /* ------------------------------------------------------------ navigation */
 
@@ -132,51 +56,36 @@ function go(name, back = false) {
   window.scrollTo({ top: 0, behavior: 'auto' });
 }
 
-function stepNav({ backTo, nextTo, nextLabel, status }) {
-  return el('div', { class: 'stepnav' }, [
-    backTo && el('button', { class: 'btn btn--ghost', type: 'button', onClick: () => go(backTo, true) }, 'חזרה'),
-    el('span', { class: 'stepnav__status', text: status || '' }),
-    nextTo && el('button', { class: 'btn btn--primary', type: 'button', onClick: () => go(nextTo) }, nextLabel || 'המשך')
-  ]);
-}
+function chrome() {
+  const current = STEPS[stepIndex];
+  if (current === 'intro') return paintProgress({ steps: INPUT_STEPS, current, label: null });
 
-/* ----------------------------------------------------------- the motif -- */
-
-/**
- * Places the template's two shapes: a trail, and a dot landing on the trail's
- * transparent end so the streak reads as coming off the dot. Trail 273x89,
- * dot 93, neither scaled; rotations are taken from the template's own set.
- */
-function cometField(pairs) {
-  const W = 273; const H = 89; const D = 93;
-  const shapes = pairs.flatMap(({ x, y, rot }) => {
-    const radians = (rot * Math.PI) / 180;
-    const cx = x + W / 2 + (W / 2) * Math.cos(radians);
-    const cy = y + H / 2 + (W / 2) * Math.sin(radians);
-    return [
-      el('span', { class: 'trail', style: `left:${x}px; top:${y}px; --rot:${rot}deg;` }),
-      el('span', { class: 'dot', style: `left:${cx - D / 2}px; top:${cy - D / 2}px;` })
-    ];
+  const position = INPUT_STEPS.indexOf(current);
+  paintProgress({
+    steps: INPUT_STEPS,
+    current,
+    done: current === 'report',
+    label: current === 'report'
+      ? STEP_NAMES.report
+      : `${position + 1}/${INPUT_STEPS.length} · ${STEP_NAMES[current]}`
   });
-  return el('div', { class: 'cometfield', 'aria-hidden': 'true' }, shapes);
 }
 
 /* ------------------------------------------------------------ the views */
 
 function viewIntro() {
   return el('section', { class: 'intro view' }, [
-    cometField([{ x: -70, y: 150, rot: 51.7 }, { x: 150, y: 520, rot: 130.2 }]),
+    cometField([{ x: -150, y: 90, rot: 51.7 }, { x: 40, y: 560, rot: 130.2 }]),
     el('div', { class: 'intro__inner' }, [
-      el('p', { class: 'kicker', text: 'רפאל' }),
+      el('p', { class: 'kicker', text: 'רפאל · גרסה א׳' }),
       el('h1', { class: 'hero-title', text: 'מיפוי מוכנות להטמעת AI' }),
-      el('p', { class: 'intro__lead', text: 'תמונת מצב מזוקקת של נקודת הפתיחה שלך ושל היחידה, כקלט לעבודה בהמשך עם Copilot.' }),
+      el('p', { class: 'intro__lead', text: 'תמונת מצב מזוקקת של נקודת הפתיחה שלך ושל היחידה, כקלט לעבודה עם Copilot בהמשך.' }),
       el('ul', { class: 'principles' }, PRINCIPLES.map((line) => el('li', { text: line }))),
       el('div', { class: 'actions', style: 'margin-block-start: var(--s-12);' }, [
         el('button', { class: 'btn btn--onDark btn--lg', type: 'button', onClick: () => go('team') },
           hasAnyAnswer() ? 'המשך במיפוי' : 'התחלה'),
         hasAnyAnswer() && el('button', {
-          class: 'btn btn--quiet', type: 'button',
-          style: 'color:#9ea6c8;', onClick: reset
+          class: 'btn btn--quiet', type: 'button', style: 'color:#9ea6c8;', onClick: reset
         }, 'התחלה מחדש')
       ])
     ])
@@ -210,15 +119,13 @@ function scaleGroup(item) {
 
   const choose = (value, focus = false) => {
     state.ratings[item.id] = value;
-    save();
+    store.save();
     paint();
     if (focus) cells[value - 1].focus();
     updateStatus();
   };
 
-  cells.forEach((cell, index) => {
-    cell.addEventListener('click', () => choose(index + 1));
-  });
+  cells.forEach((cell, index) => cell.addEventListener('click', () => choose(index + 1)));
 
   group.addEventListener('keydown', (event) => {
     const current = state.ratings[item.id] || 1;
@@ -232,21 +139,6 @@ function scaleGroup(item) {
 
   paint();
   return group;
-}
-
-function textField(field) {
-  const area = el('textarea', {
-    id: `f-${field.id}`,
-    rows: '3',
-    onInput: (event) => { state.open[field.id] = event.target.value; save(); }
-  });
-  area.value = state.open[field.id] || '';
-
-  return el('div', { class: 'field' }, [
-    el('label', { class: 'field__label', for: `f-${field.id}`, text: field.label }),
-    field.note && el('span', { class: 'field__note', text: field.note }),
-    area
-  ]);
 }
 
 function updateStatus() {
@@ -280,11 +172,11 @@ function viewDimension(dimension) {
       ]))),
       dimension.open.length > 0 && el('div', {}, [
         el('span', { class: 'section-label', text: 'שאלות פתוחות', style: 'margin-block-start: var(--s-12); display:block;' }),
-        el('div', { class: 'fields' }, dimension.open.map(textField))
+        el('div', { class: 'fields' }, dimension.open.map((field) => textField(field, state.open, onText)))
       ]),
       stepNav({
-        backTo: STEPS[index - 1],
-        nextTo: STEPS[index + 1],
+        onBack: () => go(STEPS[index - 1], true),
+        onNext: () => go(STEPS[index + 1]),
         status: left ? `${left} מתוך ${dimension.items.length} היגדים ללא דירוג` : ''
       })
     ])
@@ -305,7 +197,7 @@ function viewProcess() {
     'aria-pressed': String(state.environment === env.id),
     onClick: () => {
       state.environment = env.id;
-      save();
+      store.save();
       buttons.forEach((button, index) => button.setAttribute('aria-pressed', String(ENVIRONMENTS[index].id === env.id)));
       paintPrompt();
     },
@@ -322,8 +214,9 @@ function viewProcess() {
       ]),
       el('div', { class: 'choices', role: 'group', 'aria-label': ENVIRONMENT_QUESTION }, buttons),
       promptBox,
-      el('div', { class: 'fields', style: 'margin-block-start: var(--s-10);' }, PROCESS_FIELDS.map(textField)),
-      stepNav({ backTo: 'work', nextTo: 'report', nextLabel: 'הפקת תמונת מצב' })
+      el('div', { class: 'fields', style: 'margin-block-start: var(--s-10);' },
+        PROCESS_FIELDS.map((field) => textField(field, state.open, onText))),
+      stepNav({ onBack: () => go('work', true), onNext: () => go('report'), nextLabel: 'הפקת תמונת מצב' })
     ])
   ]);
 }
@@ -345,31 +238,6 @@ function viewReport() {
       bullet.text
     ])))
   ]));
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(plain);
-      toast('הפלט הועתק');
-    } catch {
-      const area = el('textarea', { style: 'position:fixed;opacity:0;top:0;' });
-      area.value = plain;
-      document.body.append(area);
-      area.select();
-      const ok = document.execCommand('copy');
-      area.remove();
-      toast(ok ? 'הפלט הועתק' : 'ההעתקה נחסמה בדפדפן');
-    }
-  };
-
-  const download = () => {
-    const blob = new Blob([plain], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = el('a', { href: url, download: 'מיפוי-מוכנות-AI.txt' });
-    document.body.append(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-  };
 
   return el('section', { class: `view${goingBack ? ' view--back' : ''}` }, [
     el('div', { class: 'page' }, [
@@ -401,8 +269,8 @@ function viewReport() {
       ]),
 
       el('div', { class: 'exportbar' }, [
-        el('button', { class: 'btn btn--primary', type: 'button', onClick: copy }, 'העתקה ל-Copilot'),
-        el('button', { class: 'btn btn--ghost', type: 'button', onClick: download }, 'הורדה'),
+        el('button', { class: 'btn btn--primary', type: 'button', onClick: () => copyText(plain) }, 'העתקה ל-Copilot'),
+        el('button', { class: 'btn btn--ghost', type: 'button', onClick: () => downloadText(plain, 'מיפוי-מוכנות-AI.txt') }, 'הורדה'),
         el('button', { class: 'btn btn--ghost', type: 'button', onClick: () => window.print() }, 'הדפסה'),
         el('span', { class: 'exportbar__hint', text: 'הפלט מועתק כפי שהוא. Copilot משמש לשלב הבא, אחרי המיפוי.' }),
         el('button', { class: 'btn btn--quiet', type: 'button', onClick: () => go('process', true) }, 'חזרה לעריכה')
@@ -415,10 +283,7 @@ function viewReport() {
 
 function reset() {
   if (!window.confirm('לאפס את כל התשובות ולהתחיל מחדש? הפעולה אינה הפיכה.')) return;
-  Object.keys(state.ratings).forEach((key) => delete state.ratings[key]);
-  Object.keys(state.open).forEach((key) => delete state.open[key]);
-  state.environment = null;
-  try { localStorage.removeItem(STORE_KEY); } catch { /* ignore */ }
+  store.clear();
   go('intro', true);
   toast('התשובות נמחקו');
 }
@@ -438,14 +303,13 @@ function render() {
     ? 'מיפוי מוכנות להטמעת AI | רפאל'
     : `${STEP_NAMES[current]} · מיפוי מוכנות להטמעת AI`;
 
-  paintChrome();
+  chrome();
   goingBack = false;
 }
 
 /* ------------------------------------------------------------------ boot */
 
 initTheme();
-load();
-document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
-window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', paintChrome);
+store.load();
+bindTheme(chrome);
 render();

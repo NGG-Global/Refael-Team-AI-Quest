@@ -14,7 +14,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Check the summary engine against §8 and §9
-        run: node --test tests/engine.test.mjs
+      - name: Check both summary engines against their specs
+        run: node --test tests/*.test.mjs
       - name: Build the single-file version
         run: node tools/build-single.mjs

@@ -14,6 +14,7 @@ import {
   DIMENSIONS, ENVIRONMENTS, CONTRAST_PAIRS,
   REPORT_SECTIONS, REPORT_TITLE, INSUFFICIENT, FORBIDDEN_PHRASES
 } from './content.js';
+import { splitStatements } from './text.js';
 
 /* ------------------------------------------------------------------ bullets */
 
@@ -56,19 +57,6 @@ function enforce(bullets) {
 }
 
 /* -------------------------------------------------------------- user's text */
-
-/**
- * Splits a free-text answer into separate statements on line breaks, sentence
- * terminators and bullet characters. Reorganisation only — no word is changed,
- * dropped or rephrased.
- */
-export function splitStatements(text) {
-  return String(text || '')
-    .replace(/([.!?;׃])\s+/g, '$1\n')
-    .split(/\n+/)
-    .map((line) => line.replace(/^[\s\-–—*•·.]+/, '').trim())
-    .filter((line) => line.length > 1);
-}
 
 function textOf(state, id) {
   return String((state.open && state.open[id]) || '').trim();

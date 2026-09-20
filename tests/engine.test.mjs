@@ -6,7 +6,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { distill, toPlainText, violations, splitStatements } from '../assets/js/engine.js';
+import { distill, toPlainText, violations } from '../assets/js/engine.js';
+import { splitStatements } from '../assets/js/text.js';
 import {
   DIMENSIONS, ALL_ITEM_IDS, ALL_OPEN_IDS, ENVIRONMENTS,
   INSUFFICIENT, REPORT_SECTIONS
