@@ -1,20 +1,29 @@
-# מיפוי מוכנות להטמעת AI — Rafael
+# כלי סדנת מנהלים — Rafael
 
-A diagnostic mapping tool that produces a distilled picture of a manager's and
-a unit's starting point for AI adoption. The output is written to be pasted
-straight into Copilot, which is where the next stage — challenge, focus,
-and a plan — actually happens. The tool itself stops before that line.
-
-Built to the specification *"אפיון למפתח | כלי מיפוי מוכנות להטמעת AI – רפאל"*.
-Section references below (§1–§11) point at that document.
+Two workshop tools for the same Rafael managers' session, in two different
+approaches, behind one entry screen. The team is choosing between them, so both
+are built in the same design language and the same interaction model — the
+comparison should be about the questionnaires, not about finish.
 
 **Hebrew, right-to-left. No build step. No dependencies. No network calls.**
 
+| Page | What it is |
+|---|---|
+| `index.html` | The entry screen: pick a version |
+| `mapping.html` | **גרסה א׳** — מיפוי מוכנות להטמעת AI |
+| `planning.html` | **גרסה ב׳** — מהמיפוי לתוכנית פעולה |
+
+The two keep separate answers in `localStorage`, so trying one does not disturb
+the other.
+
 ---
 
-## What it does
+## גרסה א׳ — מיפוי מוכנות (`mapping.html`)
 
-Four input steps, then a result:
+Built to *"אפיון למפתח | כלי מיפוי מוכנות להטמעת AI – רפאל"*. Section
+references below (§1–§11) point at that document. A **diagnostic** tool: it maps
+the starting point and stops before recommendations. The output is written to be
+pasted into Copilot, which is where planning happens.
 
 | Step | Content | Spec |
 |---|---|---|
@@ -24,15 +33,12 @@ Four input steps, then a result:
 | תהליך עבודה | environment branch (ייצור / פיתוח / מטה-אחר) plus 4 open fields | §7 |
 | תמונת מצב | the distilled output, visualised and ready to copy | §8, §10 |
 
-The environment question changes one framing prompt; the four fields that follow
-are the same for everyone, so there is one questionnaire rather than three.
+### How its output is produced
 
-## How the output is produced
-
-`assets/js/engine.js` is a deterministic, rule-based module. There is no model
-in the loop — every line it emits is either a factual restatement of what the
-user rated, or the user's own words reproduced unchanged and regrouped under the
-right heading. The §9 rules are implemented as follows:
+`assets/js/engine.js` is deterministic and rule-based. There is no model in the
+loop — every line is either a factual restatement of what was rated, or the
+user's own words reproduced unchanged and regrouped under the right heading. The
+§9 rules are implemented as follows:
 
 | Rule (§9) | Implementation |
 |---|---|
@@ -45,13 +51,7 @@ right heading. The §9 rules are implemented as follows:
 | No benchmarking | There is no reference data in the tool to benchmark against. |
 | Keep the abstraction level | The tool asks for nothing identifying, and the output is assembled only from what was typed. |
 
-Run the rules as tests:
-
-```bash
-node --test tests/engine.test.mjs
-```
-
-## Visualisation
+### Its visualisation
 
 Two views, and deliberately no third:
 
@@ -67,13 +67,69 @@ rating is not a failure, and a one-hue scale reads as a position rather than a
 verdict. Every mark also carries its own digit, so the two lightest steps never
 depend on colour alone, and a full table view is one click away.
 
+---
+
+## גרסה ב׳ — תוכנית פעולה (`planning.html`)
+
+Built to *"שאלון לפעילות עבור סדנת מנהלים ברפאל"*. An **action-planning** tool:
+it defines one change, maps the team, and ends in concrete steps and a personal
+commitment. Estimated 7 minutes.
+
+| Part | Content |
+|---|---|
+| חלק 1 — הגדרת השינוי | up to 2 domains from 5, then what the AI does / what stays human / what value it creates |
+| חלק 2 — מיפוי הצוות | two lists: שגרירים and מתנגדים |
+| חלק 3 — כיווני פעולה | 4 action fields plus a commitment sentence with two blanks |
+| תוכנית פעולה | the nine output blocks, visualised and ready to copy |
+
+### How its output is produced
+
+The source document sets no constraints on the summary — this version is meant
+to produce a plan, and the plan is the manager's own commitments. So
+`assets/js/planning-engine.js` stays a restatement: it organises what was
+entered under the nine headings and adds nothing. A blank stays visibly blank
+(*"לא נמלא"*) rather than being filled in on the user's behalf, and a
+half-finished commitment shows the gap rather than reading as complete.
+
+### Its visualisation
+
+- **חלוקת העבודה** — the AI side and the human side shown together, so an empty
+  side is visible. This is the document's own central frame.
+- **מפת הצוות** — one chip per person, the two groups counted separately. Fill
+  rather than hue separates them: a colour that reads as good or bad is the
+  wrong encoding for people.
+- **תחומי השינוי** — the five domains with the chosen ones marked.
+
+### Two deliberate departures from the source document
+
+1. The document says *"כתבו את שמות חברי הצוות"*. The step carries one added
+   line — *"אפשר לציין שם, תפקיד או פרופיל כללי"* — matching how version A's own
+   spec handles the same question (§4: *"אין צורך לציין שם"*). Names still work;
+   this only offers the alternative. Remove the `notice` in
+   `viewTeam()` (`assets/js/planning-app.js`) to restore the document exactly.
+2. The remove control on a person chip is a two-stroke inline SVG. The design
+   system ships four icons and says not to substitute from an icon set; it also
+   says interactive UI is new design work. This is the one glyph drawn for it.
+
+---
+
+## Tests
+
+```bash
+node --test tests/*.test.mjs      # 21 tests
+```
+
+`tests/engine.test.mjs` holds version A's §8/§9 rules, including a 600-case
+fuzz. `tests/planning-engine.test.mjs` holds version B's nine blocks, its
+verbatim guarantee and its unfilled-field behaviour. CI runs both on every push.
+
 ## Deployment
 
-The site is plain static files at the repository root, with relative paths
-throughout, so it works from any sub-path.
+Plain static files at the repository root, relative paths throughout, so it
+works from any sub-path.
 
-**GitHub Actions (recommended).** `.github/workflows/pages.yml` runs the engine
-tests and then deploys on every push to `main`, or on manual dispatch.
+**GitHub Actions (recommended).** `.github/workflows/pages.yml` runs the tests
+and then deploys on every push to `main`, or on manual dispatch.
 
 Pages has to be switched on first, by hand, once: *Settings → Pages → Build and
 deployment → Source: GitHub Actions*. Until that is done the `deploy` job fails
@@ -88,26 +144,28 @@ pick the branch and `/ (root)`. `.nojekyll` is already present.
 
 Either way the site lands at `https://<owner>.github.io/<repo>/`.
 
-> A public repository produces a publicly reachable page. The page sets
+> A public repository produces a publicly reachable page. The pages set
 > `robots: noindex, nofollow`, but that is a request to crawlers, not access
-> control. For an internal-only deployment, host the built file behind the
+> control. For an internal-only deployment, host the built files behind the
 > organisation's own authentication, or use the offline build below.
 
-## Offline single-file build
+## Offline build
 
 ```bash
-node tools/build-single.mjs      # -> dist/index.html
+node tools/build-single.mjs      # -> dist/index.html, dist/mapping.html, dist/planning.html
 ```
 
-Produces one HTML file with the styles, scripts, fonts and logos inlined and
-**no external reference of any kind**. It opens from a file path, a USB drive or
-a network share, which is what a closed environment needs. The build fails if
-any external reference survives.
+Three self-contained HTML files with the styles, scripts, fonts and logos
+inlined and **no external reference of any kind**. They sit side by side, so the
+links between them still work. They open from a file path, a USB drive or a
+network share, which is what a closed environment needs. The build fails if any
+external reference survives, and fails if two modules bundled into the same page
+declare the same top-level name.
 
 ## Local development
 
-ES modules need a server; opening `index.html` from the filesystem will not work
-(use `dist/index.html` for that).
+ES modules need a server; opening the pages from the filesystem will not work
+(use the `dist/` build for that).
 
 ```bash
 python3 -m http.server 8000     # then open http://localhost:8000
@@ -116,29 +174,38 @@ python3 -m http.server 8000     # then open http://localhost:8000
 ## Layout
 
 ```
-index.html                  page shell, RTL
-assets/css/tokens.css       design tokens + self-hosted Assistant
-assets/css/app.css          the UI
-assets/js/content.js        all questionnaire content — the single source of truth
-assets/js/engine.js         the summary engine (§8, §9) — pure, no DOM
-assets/js/charts.js         the two chart views
-assets/js/dom.js            element builder
-assets/js/app.js            state, steps, persistence, export
-tests/engine.test.mjs       the §8/§9 rules as tests
-tools/build-single.mjs      offline single-file build
+index.html                     entry screen
+mapping.html / planning.html   the two versions
+assets/css/tokens.css          design tokens + self-hosted Assistant
+assets/css/app.css             the UI, shared by all three pages
+assets/js/dom.js               element builder
+assets/js/text.js              free-text splitting, shared by both engines
+assets/js/shell.js             storage, theme, app bar, fields, export
+assets/js/content.js           version A content — the single source of truth
+assets/js/engine.js            version A's summary engine (§8, §9) — pure, no DOM
+assets/js/charts.js            version A's two chart views
+assets/js/app.js               version A's steps and views
+assets/js/planning-content.js  version B content
+assets/js/planning-engine.js   version B's output builder — pure, no DOM
+assets/js/planning-app.js      version B's steps, views and charts
+assets/js/chooser.js           the entry screen
+tests/                         both engines' rules as tests
+tools/build-single.mjs         offline build
 ```
 
-Changing wording means editing `assets/js/content.js` only. Statement `label`
-fields are the short names used in charts and in the distilled output; they name
-what a statement measures and add no judgement to it.
+Changing wording means editing `content.js` or `planning-content.js` only.
 
 ## Privacy
 
-Answers live in `localStorage` under `rafael-ai-readiness/v1` and are never
-transmitted. The font is self-hosted and there is no analytics, no telemetry and
-no third-party request, so the page works unchanged on a closed network. The
-footer states this, and *התחלה מחדש* on the opening screen clears the store
-after a confirmation.
+Answers live in `localStorage` under `rafael-ai-readiness/v1` and
+`rafael-ai-planning/v1`, and are never transmitted. The font is self-hosted and
+there is no analytics, no telemetry and no third-party request, so the pages
+work unchanged on a closed network. *התחלה מחדש* on either opening screen clears
+that version's store after a confirmation.
+
+Version B collects names of team members if you enter them. They stay in the
+browser like everything else, but they are the one piece of personal data either
+tool holds — worth knowing before the output is pasted anywhere.
 
 ## Design
 
@@ -147,8 +214,8 @@ Built on the **Rafael LEAD AI** design system: `#0044E8` blue, `#00002C` navy,
 shadows, and the comet motif at its own sizes and rotations.
 
 That system is a presentation template and states that it defines no interaction
-states and no motion. Three things here are therefore additions, and are marked
-as such in `assets/css/tokens.css`:
+states and no motion. These are therefore additions, marked as such in
+`assets/css/tokens.css`:
 
 1. **Type sizes are a web scale.** The template's 88px title and 36px body are
    slide measurements; the ratios between steps are kept.
@@ -165,4 +232,4 @@ Motion is restrained and turns off under `prefers-reduced-motion`.
 
 Rating rows are real radio groups with roving focus, arrow keys, `Home`/`End`
 and digit shortcuts. Light and dark themes are both authored rather than
-inverted. The page prints to a clean report.
+inverted. The pages print to a clean report.

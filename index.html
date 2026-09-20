@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>מיפוי מוכנות להטמעת AI | רפאל</title>
-<meta name="description" content="כלי מיפוי אבחוני לנקודת הפתיחה של מנהל ויחידה לקראת הטמעת AI. כל התשובות נשארות בדפדפן.">
+<title>סדנת מנהלים · שתי גרסאות | רפאל</title>
+<meta name="description" content="בחירה בין שתי גרסאות לכלי הסדנה: מיפוי מוכנות להטמעת AI, או מעבר מהמיפוי לתוכנית פעולה.">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#00002c" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
@@ -20,10 +20,10 @@
 <div class="shell">
 
   <header class="appbar">
-    <div class="appbar__mark">
+    <a class="appbar__mark" href="index.html" aria-label="חזרה לבחירת גרסה">
       <img src="assets/img/logo-ngg.png" alt="NGG" width="71" height="92">
-      <span class="appbar__name">מיפוי מוכנות להטמעת AI</span>
-    </div>
+      <span class="appbar__name">סדנת מנהלים</span>
+    </a>
 
     <div class="appbar__spacer"></div>
 
@@ -37,7 +37,37 @@
     </button>
   </header>
 
-  <main class="main" id="main" tabindex="-1"></main>
+  <main class="main" id="main" tabindex="-1">
+    <section class="intro intro--chooser">
+      <div class="cometfield" aria-hidden="true" id="cometfield"></div>
+      <div class="intro__inner">
+        <p class="kicker">רפאל · סדנת מנהלים</p>
+        <h1 class="hero-title">שתי גרסאות לבחירה</h1>
+        <p class="intro__lead">שני כלים לאותה סדנה, בשתי גישות שונות. אפשר להתנסות בשתיהן; התשובות נשמרות בנפרד לכל גרסה.</p>
+      </div>
+    </section>
+
+    <div class="page">
+      <div class="picks">
+      <article class="pick">
+        <span class="kicker">גרסה א׳</span>
+        <h2 class="pick__title">מיפוי מוכנות להטמעת AI</h2>
+        <p class="pick__purpose">ממפה את נקודת הפתיחה של המנהל ושל היחידה.</p>
+        <p class="pick__nature">אינו ממליץ ואינו בונה תוכנית עבודה. הפלט הוא קלט לעבודה עם Copilot בהמשך.</p>
+        <ul class="pick__facts"><li>3 ממדים</li><li>19 היגדים לדירוג</li><li>9 שאלות פתוחות</li></ul>
+        <a class="btn btn--primary" href="mapping.html">פתיחה</a>
+      </article>
+      <article class="pick">
+        <span class="kicker">גרסה ב׳</span>
+        <h2 class="pick__title">מהמיפוי לתוכנית פעולה</h2>
+        <p class="pick__purpose">מגדיר שינוי אחד, ממפה את הצוות ומנסח צעדים ראשונים.</p>
+        <p class="pick__nature">מסתיים בתוכנית פעולה ובהתחייבות אישית עם מדד הצלחה.</p>
+        <ul class="pick__facts"><li>3 חלקים</li><li>2 רשימות צוות</li><li>5 שדות פעולה</li><li>כ־7 דקות</li></ul>
+        <a class="btn btn--primary" href="planning.html">פתיחה</a>
+      </article>
+      </div>
+    </div>
+</main>
 
   <footer class="foot">
     <div class="foot__logos">
@@ -45,8 +75,7 @@
       <img src="assets/img/logo-rafael-blue.png" alt="רפאל" width="190" height="190" data-logo="rafael">
     </div>
     <p class="foot__note">
-      התשובות נשמרות בדפדפן שלך בלבד ואינן נשלחות לשום מקום.
-      יש למלא בניסוח בלמ״ס, בלי שמות פרויקטים, מערכות, מוצרים, לקוחות או מידע טכני רגיש.
+      התשובות נשמרות בדפדפן שלך בלבד ואינן נשלחות לשום מקום. יש למלא בניסוח בלמ״ס, בלי שמות פרויקטים, מערכות, מוצרים, לקוחות או מידע טכני רגיש.
     </p>
   </footer>
 
@@ -54,7 +83,7 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script type="module" src="assets/js/app.js"></script>
+<script type="module" src="assets/js/chooser.js"></script>
 <noscript>
   <p style="padding:24px;font-family:system-ui;">הכלי דורש JavaScript פעיל בדפדפן.</p>
 </noscript>
