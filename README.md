@@ -73,8 +73,15 @@ The site is plain static files at the repository root, with relative paths
 throughout, so it works from any sub-path.
 
 **GitHub Actions (recommended).** `.github/workflows/pages.yml` runs the engine
-tests and then deploys on every push to `main`, or on manual dispatch. Enable it
-once under *Settings → Pages → Build and deployment → Source: GitHub Actions*.
+tests and then deploys on every push to `main`, or on manual dispatch.
+
+Pages has to be switched on first, by hand, once: *Settings → Pages → Build and
+deployment → Source: GitHub Actions*. Until that is done the `deploy` job fails
+at `actions/configure-pages` with *"Get Pages site failed … Not Found"*. The
+action's `enablement: true` does not stand in for it — creating a Pages site
+needs repo-administration rights, which `GITHUB_TOKEN` does not carry, so it
+fails with *"Resource not accessible by integration"*. After enabling, re-run
+the workflow from the Actions tab or push to `main`.
 
 **Deploy from a branch.** *Settings → Pages → Source: Deploy from a branch*,
 pick the branch and `/ (root)`. `.nojekyll` is already present.
