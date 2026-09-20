@@ -1,0 +1,20 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  test:
+    name: Engine rules
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check the summary engine against §8 and §9
+        run: node --test tests/engine.test.mjs
+      - name: Build the single-file version
+        run: node tools/build-single.mjs
