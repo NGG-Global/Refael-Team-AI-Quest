@@ -25,11 +25,11 @@ const PAGES = [
   { html: 'index.html', modules: ['dom.js', 'shell.js', 'chooser.js'] },
   {
     html: 'mapping.html',
-    modules: ['content.js', 'dom.js', 'text.js', 'engine.js', 'charts.js', 'shell.js', 'app.js']
+    modules: ['content.js', 'dom.js', 'text.js', 'engine.js', 'charts.js', 'shell.js', 'report-export.js', 'app.js']
   },
   {
     html: 'planning.html',
-    modules: ['planning-content.js', 'dom.js', 'text.js', 'planning-engine.js', 'shell.js', 'planning-app.js']
+    modules: ['planning-content.js', 'dom.js', 'text.js', 'planning-engine.js', 'shell.js', 'report-export.js', 'planning-app.js']
   }
 ];
 

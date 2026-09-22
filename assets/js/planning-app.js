@@ -16,6 +16,7 @@ import {
   createStore, initTheme, bindTheme, paintProgress, cometField,
   textField, stepNav, toast, copyText, downloadText
 } from './shell.js';
+import { savePdf, saveImage, stamp, exportButton, bindPrint } from './report-export.js';
 
 const STEPS = ['intro', 'change', 'team', 'actions', 'report'];
 const INPUT_STEPS = ['change', 'team', 'actions'];
@@ -339,6 +340,7 @@ function viewReport() {
   const report = buildPlan(state);
   const plain = toPlainText(report);
   const done = completeness(state);
+  const basename = `תוכנית-פעולה-AI-${stamp()}`;
 
   const blocks = report.sections.map((section) => el('article', { class: 'block' }, [
     el('h3', { class: 'block__heading', text: section.heading }),
@@ -352,46 +354,59 @@ function viewReport() {
     ])))
   ]));
 
-  return el('section', { class: `view${goingBack ? ' view--back' : ''}` }, [
-    el('div', { class: 'page' }, [
-      el('header', { class: 'report-head' }, [
-        el('div', {}, [
-          el('span', { class: 'kicker', text: 'תוצאת השאלון' }),
-          el('h1', { class: 'step-title', text: report.title })
-        ])
-      ]),
-      el('div', { class: 'rule' }),
-
-      el('section', { class: 'panel' }, [
-        el('h2', { class: 'panel__title', text: 'חלוקת העבודה' }),
-        el('p', { class: 'panel__note', text: 'מה עובר ל־AI ומה נשאר באחריות האדם, כפי שהוגדר.' }),
-        splitChart(),
-        el('div', { class: 'domains__wrap' }, [
-          el('span', { class: 'section-label', text: 'תחומי השינוי שנבחרו' }),
-          domainChart()
-        ])
-      ]),
-
-      el('section', { class: 'panel' }, [
-        el('h2', { class: 'panel__title', text: 'מפת הצוות' }),
-        el('p', { class: 'panel__note', text: 'כל תווית היא אדם אחד. שתי הקבוצות נספרות בנפרד.' }),
-        teamChart()
-      ]),
-
-      el('section', {}, [
-        el('span', { class: 'section-label', text: 'הפלט להעתקה', style: 'margin-block-start: var(--s-12); display:block;' }),
-        el('div', { class: 'report' }, blocks)
-      ]),
-
-      el('div', { class: 'exportbar' }, [
-        el('button', { class: 'btn btn--primary', type: 'button', onClick: () => copyText(plain) }, 'העתקה'),
-        el('button', { class: 'btn btn--ghost', type: 'button', onClick: () => downloadText(plain, 'תוכנית-פעולה-AI.txt') }, 'הורדה'),
-        el('button', { class: 'btn btn--ghost', type: 'button', onClick: () => window.print() }, 'הדפסה'),
-        el('span', { class: 'exportbar__hint', text: `${done.filled} מתוך ${done.total} השדות מולאו.` }),
-        el('button', { class: 'btn btn--quiet', type: 'button', onClick: () => go('actions', true) }, 'חזרה לעריכה')
+  // The image is taken from this node, so it is held rather than inlined.
+  const page = el('div', { class: 'page' }, [
+    el('header', { class: 'report-head' }, [
+      el('div', {}, [
+        el('span', { class: 'kicker', text: 'תוצאת השאלון' }),
+        el('h1', { class: 'step-title', text: report.title })
       ])
+    ]),
+    el('div', { class: 'rule' }),
+
+    el('section', { class: 'panel' }, [
+      el('h2', { class: 'panel__title', text: 'חלוקת העבודה' }),
+      el('p', { class: 'panel__note', text: 'מה עובר ל־AI ומה נשאר באחריות האדם, כפי שהוגדר.' }),
+      splitChart(),
+      el('div', { class: 'domains__wrap' }, [
+        el('span', { class: 'section-label', text: 'תחומי השינוי שנבחרו' }),
+        domainChart()
+      ])
+    ]),
+
+    el('section', { class: 'panel' }, [
+      el('h2', { class: 'panel__title', text: 'מפת הצוות' }),
+      el('p', { class: 'panel__note', text: 'כל תווית היא אדם אחד. שתי הקבוצות נספרות בנפרד.' }),
+      teamChart()
+    ]),
+
+    el('section', {}, [
+      el('span', { class: 'section-label', text: 'הפלט להעתקה', style: 'margin-block-start: var(--s-12); display:block;' }),
+      el('div', { class: 'report' }, blocks)
+    ]),
+
+    el('div', { class: 'exportbar', dataset: { export: 'skip' } }, [
+      el('button', { class: 'btn btn--primary', type: 'button', onClick: () => copyText(plain) }, 'העתקה'),
+      el('button', { class: 'btn btn--ghost', type: 'button', onClick: () => downloadText(plain, `${basename}.txt`) }, 'הורדת טקסט'),
+      el('button', {
+        class: 'btn btn--ghost',
+        type: 'button',
+        onClick: () => {
+          toast('בחלון ההדפסה יש לבחור יעד "שמירה כ-PDF".');
+          savePdf(basename);
+        }
+      }, 'שמירה כ-PDF'),
+      exportButton({
+        label: 'שמירה כתמונה',
+        busyLabel: 'מכין תמונה…',
+        run: () => saveImage(page, `${basename}.png`, `מהמיפוי לתוכנית פעולה · הופק ב-${stamp()}`)
+      }),
+      el('span', { class: 'exportbar__hint', text: `${done.filled} מתוך ${done.total} השדות מולאו.` }),
+      el('button', { class: 'btn btn--quiet', type: 'button', onClick: () => go('actions', true) }, 'חזרה לעריכה')
     ])
   ]);
+
+  return el('section', { class: `view${goingBack ? ' view--back' : ''}` }, page);
 }
 
 /* ----------------------------------------------------------------- reset */
@@ -425,4 +440,5 @@ function render() {
 initTheme();
 store.load();
 bindTheme(chrome);
+bindPrint();
 render();

@@ -19,6 +19,7 @@ import {
   createStore, initTheme, bindTheme, paintProgress, cometField,
   textField, stepNav, toast, copyText, downloadText
 } from './shell.js';
+import { savePdf, saveImage, stamp, exportButton, bindPrint } from './report-export.js';
 
 const STEPS = ['intro', 'team', 'manager', 'work', 'process', 'report'];
 const INPUT_STEPS = ['team', 'manager', 'work', 'process'];
@@ -224,6 +225,7 @@ function viewProcess() {
 function viewReport() {
   const report = distill(state);
   const plain = toPlainText(report);
+  const basename = `מיפוי-מוכנות-AI-${stamp()}`;
 
   const blocks = report.sections.map((section) => el('article', { class: 'block' }, [
     el('h3', { class: 'block__heading', text: section.heading }),
@@ -239,44 +241,57 @@ function viewReport() {
     ])))
   ]));
 
-  return el('section', { class: `view${goingBack ? ' view--back' : ''}` }, [
-    el('div', { class: 'page' }, [
-      el('header', { class: 'report-head' }, [
-        el('div', {}, [
-          el('span', { class: 'kicker', text: 'תוצאת המיפוי' }),
-          el('h1', { class: 'step-title', text: report.title })
-        ])
-      ]),
-      el('div', { class: 'rule' }),
-
-      el('section', { class: 'panel' }, [
-        el('h2', { class: 'panel__title', text: 'פיזור הדירוגים' }),
-        el('p', { class: 'panel__note', text: 'כל ריבוע הוא היגד אחד, מסודר מהנמוך לגבוה. שלושת הממדים נשמרים בנפרד ואינם מצטרפים לציון אחד.' }),
-        scaleKey('scalekey--static'),
-        distribution(state),
-        ratingsTable(state)
-      ]),
-
-      ...DIMENSIONS.map((dimension) => el('section', { class: 'panel' }, [
-        el('h2', { class: 'panel__title', text: dimension.title }),
-        el('p', { class: 'panel__note', text: dimension.lead }),
-        dimensionDetail(dimension, state)
-      ])),
-
-      el('section', {}, [
-        el('span', { class: 'section-label', text: 'הפלט להעתקה', style: 'margin-block-start: var(--s-12); display:block;' }),
-        el('div', { class: 'report' }, blocks)
-      ]),
-
-      el('div', { class: 'exportbar' }, [
-        el('button', { class: 'btn btn--primary', type: 'button', onClick: () => copyText(plain) }, 'העתקה ל-Copilot'),
-        el('button', { class: 'btn btn--ghost', type: 'button', onClick: () => downloadText(plain, 'מיפוי-מוכנות-AI.txt') }, 'הורדה'),
-        el('button', { class: 'btn btn--ghost', type: 'button', onClick: () => window.print() }, 'הדפסה'),
-        el('span', { class: 'exportbar__hint', text: 'הפלט מועתק כפי שהוא. Copilot משמש לשלב הבא, אחרי המיפוי.' }),
-        el('button', { class: 'btn btn--quiet', type: 'button', onClick: () => go('process', true) }, 'חזרה לעריכה')
+  // The image is taken from this node, so it is held rather than inlined.
+  const page = el('div', { class: 'page' }, [
+    el('header', { class: 'report-head' }, [
+      el('div', {}, [
+        el('span', { class: 'kicker', text: 'תוצאת המיפוי' }),
+        el('h1', { class: 'step-title', text: report.title })
       ])
+    ]),
+    el('div', { class: 'rule' }),
+
+    el('section', { class: 'panel' }, [
+      el('h2', { class: 'panel__title', text: 'פיזור הדירוגים' }),
+      el('p', { class: 'panel__note', text: 'כל ריבוע הוא היגד אחד, מסודר מהנמוך לגבוה. שלושת הממדים נשמרים בנפרד ואינם מצטרפים לציון אחד.' }),
+      scaleKey('scalekey--static'),
+      distribution(state),
+      ratingsTable(state)
+    ]),
+
+    ...DIMENSIONS.map((dimension) => el('section', { class: 'panel' }, [
+      el('h2', { class: 'panel__title', text: dimension.title }),
+      el('p', { class: 'panel__note', text: dimension.lead }),
+      dimensionDetail(dimension, state)
+    ])),
+
+    el('section', {}, [
+      el('span', { class: 'section-label', text: 'הפלט להעתקה', style: 'margin-block-start: var(--s-12); display:block;' }),
+      el('div', { class: 'report' }, blocks)
+    ]),
+
+    el('div', { class: 'exportbar', dataset: { export: 'skip' } }, [
+      el('button', { class: 'btn btn--primary', type: 'button', onClick: () => copyText(plain) }, 'העתקה ל-Copilot'),
+      el('button', { class: 'btn btn--ghost', type: 'button', onClick: () => downloadText(plain, `${basename}.txt`) }, 'הורדת טקסט'),
+      el('button', {
+        class: 'btn btn--ghost',
+        type: 'button',
+        onClick: () => {
+          toast('בחלון ההדפסה יש לבחור יעד "שמירה כ-PDF".');
+          savePdf(basename);
+        }
+      }, 'שמירה כ-PDF'),
+      exportButton({
+        label: 'שמירה כתמונה',
+        busyLabel: 'מכין תמונה…',
+        run: () => saveImage(page, `${basename}.png`, `מיפוי מוכנות להטמעת AI · הופק ב-${stamp()}`)
+      }),
+      el('span', { class: 'exportbar__hint', text: 'הפלט מועתק כפי שהוא. Copilot משמש לשלב הבא, אחרי המיפוי.' }),
+      el('button', { class: 'btn btn--quiet', type: 'button', onClick: () => go('process', true) }, 'חזרה לעריכה')
     ])
   ]);
+
+  return el('section', { class: `view${goingBack ? ' view--back' : ''}` }, page);
 }
 
 /* ----------------------------------------------------------------- reset */
@@ -312,4 +327,5 @@ function render() {
 initTheme();
 store.load();
 bindTheme(chrome);
+bindPrint();
 render();

@@ -113,15 +113,62 @@ half-finished commitment shows the gap rather than reading as complete.
 
 ---
 
+---
+
+## Saving the results
+
+Both report screens end in the same four ways out: copy, a `.txt` file, a PDF
+and a PNG. All four are produced in the browser and nothing is transmitted.
+
+**PDF** opens the browser's print dialog, where *שמירה כ-PDF* is the
+destination to choose. The print stylesheet in `app.css` is what the file looks
+like, and the ratings table is opened for the duration of the print — a
+collapsed `<details>` prints as nothing, and that table is the data the rest of
+the report is drawn from. The document title carries the filename while the
+dialog is up, which is what Chrome and Edge name the saved file after.
+
+**PNG** is one long image of the report, laid out at 1080 px and rendered at
+two device pixels per CSS pixel. The controls are left out, the ratings table
+is opened, and the date it was produced is added at the foot.
+
+Neither uses a library. The tool has to run on a closed network, and
+`tools/build-single.mjs` fails the build on any external reference, so the usual
+html-to-canvas and PDF packages are out. The two routes are therefore:
+
+| | How |
+|---|---|
+| PDF | `window.print()`. The browser brings real text, correct Hebrew shaping and honest page breaks — all three of which a hand-written PDF writer would have to reimplement, and would get the bidi wrong. |
+| PNG | The report's own markup inside an SVG `<foreignObject>`, drawn to a canvas. An SVG being rendered as an image may not reach outside itself for a file, so the stylesheet, the fonts and any images travel with it as data URIs. |
+
+`assets/js/report-export.js` holds both, and three details in it are worth
+knowing before changing it:
+
+- **The image is always light-themed.** An exported report is a document that
+  gets sent on or filed, and a document is on white. The dark rules are dropped
+  on the way into the SVG rather than being rendered and inverted.
+- **`html`, `body` and `:root` do not exist inside an SVG.** One wrapper stands
+  in for all three, and every rule anchored on them is given a twin that targets
+  it. Without that the report would lose its typography.
+- **The height is measured in an iframe of the export's own width.** The type
+  sizes and the gutter are clamped against `vw`, so they only come out at the
+  size the image will use in a viewport that is the width the image will be.
+
+The PNG route has been checked on the hosted pages and on the `dist/` build
+opened from a file path, where the fonts and logos are already inlined and
+nothing is fetched at all.
+
 ## Tests
 
 ```bash
-node --test tests/*.test.mjs      # 21 tests
+node --test tests/*.test.mjs      # 27 tests
 ```
 
 `tests/engine.test.mjs` holds version A's §8/§9 rules, including a 600-case
 fuzz. `tests/planning-engine.test.mjs` holds version B's nine blocks, its
-verbatim guarantee and its unfilled-field behaviour. CI runs both on every push.
+verbatim guarantee and its unfilled-field behaviour. `tests/report-export.test.mjs`
+holds the two export decisions that are not the browser's job: which selectors
+follow the report into the SVG, and what the saved file is called. CI runs all
+three on every push.
 
 ## Deployment
 
@@ -180,7 +227,8 @@ assets/css/tokens.css          design tokens + self-hosted Assistant
 assets/css/app.css             the UI, shared by all three pages
 assets/js/dom.js               element builder
 assets/js/text.js              free-text splitting, shared by both engines
-assets/js/shell.js             storage, theme, app bar, fields, export
+assets/js/shell.js             storage, theme, app bar, fields, copy and .txt
+assets/js/report-export.js     the PDF and PNG routes, shared by both versions
 assets/js/content.js           version A content — the single source of truth
 assets/js/engine.js            version A's summary engine (§8, §9) — pure, no DOM
 assets/js/charts.js            version A's two chart views
@@ -198,7 +246,9 @@ Changing wording means editing `content.js` or `planning-content.js` only.
 ## Privacy
 
 Answers live in `localStorage` under `rafael-ai-readiness/v1` and
-`rafael-ai-planning/v1`, and are never transmitted. The font is self-hosted and
+`rafael-ai-planning/v1`, and are never transmitted. The PDF and PNG exports are
+built in the page and handed to the browser's own download, so they do not
+change that. The font is self-hosted and
 there is no analytics, no telemetry and no third-party request, so the pages
 work unchanged on a closed network. *התחלה מחדש* on either opening screen clears
 that version's store after a confirmation.
@@ -232,4 +282,5 @@ Motion is restrained and turns off under `prefers-reduced-motion`.
 
 Rating rows are real radio groups with roving focus, arrow keys, `Home`/`End`
 and digit shortcuts. Light and dark themes are both authored rather than
-inverted. The pages print to a clean report.
+inverted. The pages print to a clean report, which is also what *שמירה כ-PDF*
+saves.
